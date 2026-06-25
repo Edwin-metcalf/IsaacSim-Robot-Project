@@ -9,7 +9,7 @@ PLACE_POSITION = np.array([0.3, -0.3, 0.05])
 def run_pick_and_place(world, franka, cube):
     #tell the franka to pick and place and return dict for eval
 
-    rmpflow, articulation_rmpflow = make_controller(franka, world)
+    controller, art_controller = make_controller(franka)
 
     cube_pos, _ = cube.get_world_pose()
     print(f"[task] Cube at: {np.round(cube_pos, 3)}")
@@ -24,7 +24,7 @@ def run_pick_and_place(world, franka, cube):
     pre_grasp_pos[2] += GRASP_HEIGHT_OFFSET
 
     success, dist, steps = move_to_target(
-            world, franka, rmpflow, articulation_rmpflow, target_pos=pre_grasp_pos
+            world, franka, controller, art_controller, target_pos=pre_grasp_pos
             )
     result["phases"]["pre_grasp"] = {"success": success, "final_dist_m": round(dist, 4), "steps": steps}
     print(f"[task]   -> {'OK' if success else 'FAILED'} in {steps} steps, dist={dist:.4f}m")
@@ -35,7 +35,7 @@ def run_pick_and_place(world, franka, cube):
     grasp_pos[2] += 0.02 #get it to the right spot to close around cube
 
     success, dist, steps = move_to_target(
-            world, franka, rmpflow, articulation_rmpflow, target_pos=grasp_pos
+            world, franka, controller, art_controller, target_pos=grasp_pos
             )
     result["phases"]["grasp_approach"] = {"success": success, "final_dist_m": round(dist, 4), "steps": steps}
     print(f"[task]   -> {'OK' if success else 'FAILED'} in {steps} steps, dist={dist:.4f}m")
@@ -55,7 +55,7 @@ def run_pick_and_place(world, franka, cube):
     lift_pos[2] = LIFT_HEIGHT
 
     success, dist, steps = move_to_target(
-            world, franka, rmpflow, articulation_rmpflow, target_pos=lift_pos
+            world, franka, controller, art_controller, target_pos=lift_pos
             )
 
     #check if we are still holding on to the cube
@@ -71,7 +71,7 @@ def run_pick_and_place(world, franka, cube):
 
     print("[task] phase 5: move with the cube")
     success, dist, steps = move_to_target(
-            world, franka, rmpflow, articulation_rmpflow, 
+            world, franka, controller, art_controller, 
             target_pos=PLACE_POSITION + np.array([0, 0, LIFT_HEIGHT])
             )
     result["phases"]["transport"] = {"success": success, "final_dist_m": round(dist, 4), "steps": steps}
