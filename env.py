@@ -1,5 +1,5 @@
-from isaacsim import SimulationApp
-app = SimulationApp({'headless': True})
+#from isaacsim import SimulationApp
+#app = SimulationApp({'headless': True})
 
 import numpy as np
 from isaacsim.core.api import World
@@ -27,4 +27,4 @@ if __name__ == "__main__":
     print("scene setup OK")
     print(f"Franka loaded: {world.scene.object_exists('franka')}")
     print(f"Franka DOF count: {franka.num_dof}")
-    app.close()
+#    app.close()
