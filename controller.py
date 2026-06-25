@@ -10,30 +10,31 @@ def make_controller(franka, world):
     articulation_rmpflow = ArticulationMotionPolicy(franka, rmpflow)
     return rmpflow, articulation_rmpflow
 
-def move_to_target(world, articulation, rmpflow, articulation_rmpflow, target_pos, max_steps=500):
+def move_to_target(world, franka, rmpflow, articulation_rmpflow, target_pos, max_steps=1500, threshold=0.02):
     from isaacsim.core.utils.numpy.rotations import euler_angles_to_quats
     target_orientation = euler_angles_to_quats([0, np.pi, 0])
 
+    step_size = 1.0/60.0
+
     for i in range(max_steps):
-        world.step(render=False)
-        step_size = 1.0 / 60.0
-        
         rmpflow.set_end_effector_target(target_pos, target_orientation)
+
+        base_pos, base_ori = franka.get_world_pose()
+        rmpflow.set_robot_base_pose(base_pos, base_ori)
         rmpflow.update_world()
 
-        base_pos, base_ori = articulation.get_world_pose()
-        rmpflow.set_robot_base_pose(base_pos, base_ori)
-
         action = articulation_rmpflow.get_next_articulation_action(step_size)
-        articulation.apply_action(action)
+        franka.apply_action(action)
 
-        ee_pos, _ = articulation.end_effector.get_world_pose()
+        world.step(render=False) 
+        
+        ee_pos, _ = franka.end_effector.get_world_pose()
         dist = np.linalg.norm(ee_pos - target_pos)
 
-        if dist < 0.02:
+        if dist < threshold:
             return True, dist, i
     
-    ee_pos, _ = articulation.end_effector.get_world_pose()
+    ee_pos, _ = franka.end_effector.get_world_pose()
     final_dist = np.linalg.norm(ee_pos - target_pos)
     return False, final_dist, max_steps
 
