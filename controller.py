@@ -48,7 +48,7 @@ def move_to_target(world, articulation, rmpflow, articulation_rmpflow,
         if i == 300:
             print("\n=== Settled State ===")
             print("EE Position:", np.round(ee_pos, 3))
-            print("EE Orientation:", np.round(ee_ori, 4))
+            #print("EE Orientation:", np.round(ee_ori, 4))
             print("Target Position:", np.round(target_pos, 3))
             print("Current joints:", np.round(articulation.get_joint_positions()[:7], 3))
             print("Commanded joints:", np.round(action.joint_positions, 3))

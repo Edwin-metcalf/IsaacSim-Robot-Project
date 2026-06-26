@@ -101,11 +101,35 @@ def run_pick_and_place(world, franka, cube):
                    threshold=0.03
                    )
 
+    # park the cube and stop moving so no left over velo
+    for _ in range(10):
+        world.step(render=False)
+        ee_pos, ee_ori = franka.end_effector.get_world_pose()
+        cube.set_world_pose(position=ee_pos, orientation=ee_ori)
+
+    final_ee_pos, final_ee_ori = franka.end_effector.get_world_pose()
+    cube.set_world_pose(position=final_ee_pos, orientation= final_ee_ori)
+
+    for _ in range(5):
+        world.step(render=False)
 
     #got to disable our kinematic override
-    cube.prim.GetAttribute("physics:kinematicEnabled").Set(False)
+    cube_pos_before_release, _ = cube.get_world_pose()
+    print(f"[DEBUG] Cube position just before physics re-enable: {np.round(cube_pos_before_release, 3)}")
+    print(f"[DEBUG] EE position at release: {np.round(final_ee_pos, 3)}")
+    
 
     cube.prim.GetAttribute("physics:collisionEnabled").Set(True)
+    cube.prim.GetAttribute("physics:kinematicEnabled").Set(False)
+
+    for _ in range(3):
+        world.step(render=False)
+    cube_pos_after_reenable, _ = cube.get_world_pose()
+    print(f"[DEBUG] Cube position 3 steps after physics re-enable: {np.round(cube_pos_after_reenable, 3)}")
+
+    cube.set_linear_velocity(np.array([0.0, 0.0, 0.0]))
+    cube.set_angular_velocity(np.array([0.0, 0.0, 0.0]))
+    
 
     open_gripper(franka)
     for _ in range(60):
