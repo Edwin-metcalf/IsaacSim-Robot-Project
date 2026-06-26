@@ -6,57 +6,6 @@ GRASP_HEIGHT_OFFSET = 0.15
 LIFT_HEIGHT = 0.3
 PLACE_POSITION = np.array([0.3, -0.3, 0.05])
 
-# a helper class to help actually grab the cube 
-"""
-class GraspController:
-    def __init__(self, world, franka, cube, hand_prim, cube_prim):
-        self.world = world
-        self.franka = franka
-        self.cube = cube
-        self.hand_prim = hand_prim
-        self.cube_prim = cube_prim
-
-        self.contact_frames = 0
-        self.state = "APPROACH"
-        self.done = False
-
-    def is_contact(self):
-        contacts = self.world.physics_view.get_contacts()
-
-        for c in contacts:
-            if (c.body0 == self.hand_prim and c.body1 == self.cube_prim) or \
-               (c.body1 == self.hand_prim and c.body0 == self.cube_prim):
-                   return True
-            return False
-    def step(self):
-        self.world.step(render=False)
-
-        if self.state == "CONTACT":
-            if self.is_contact():
-                self.contact_frames += 1
-            else: 
-                self.contact_frames = 0
-            
-            if self.contact_frames > 10:
-                self.attach()
-
-
-    def attach(self):
-        print("[grasp] attaching cube to hand")
-        self.cube.set_linear_velocity([0, 0, 0])
-        self.cube.set_angular_velocity([0, 0, 0])
-
-        ee_pos, ee_rot = self.franka.end_effector.get_world_pose()
-        self.cube.set_world_pose(ee_pos, ee_rot)
-
-        try:
-            self.cube.set_kinematic(True)
-        except:
-            pass
-
-        self.state = "ATTACHED"
-"""
-
 def run_pick_and_place(world, franka, cube):
     #tell the franka to pick and place and return dict for eval
 
@@ -94,11 +43,16 @@ def run_pick_and_place(world, franka, cube):
     print("[task] Phase 3: close gripper")
     close_gripper(franka)
 
+    #use Kinematic overide to grab the cube
+    cube.prim.GetAttribute("physics:kinematicEnabled").Set(True)
 
+    cube.prim.GetAttribute("physics:collisionEnabled").Set(False)
 
     #for bug perposes let physics run a couple times
     for _ in range(30):
         world.step(render=False)
+        ee_pos, ee_ori = franka.end_effector.get_world_pose()
+        cube.set_world_pose(position=ee_pos, orientation=ee_ori)
 
     result["phases"]["grasp"] = {"success": True}
 
@@ -108,7 +62,8 @@ def run_pick_and_place(world, franka, cube):
     lift_pos[2] = LIFT_HEIGHT
 
     success, dist, steps = move_to_target(
-            world, franka, controller, art_controller, target_pos=lift_pos
+            world, franka, controller, art_controller, target_pos=lift_pos,
+            attached_object=cube
             )
 
     #check if we are still holding on to the cube
@@ -125,15 +80,35 @@ def run_pick_and_place(world, franka, cube):
     print("[task] phase 5: move with the cube")
     success, dist, steps = move_to_target(
             world, franka, controller, art_controller, 
-            target_pos=PLACE_POSITION + np.array([0, 0, LIFT_HEIGHT])
+            target_pos=PLACE_POSITION + np.array([0, 0, LIFT_HEIGHT]),
+            attached_object=cube, threshold=0.05
             )
     result["phases"]["transport"] = {"success": success, "final_dist_m": round(dist, 4), "steps": steps}
     print(f"[task]   -> {'OK' if success else 'FAILED'} in {steps} steps")
 
     
     print("[task] phase 6: drop the cube")
+
+    #move to right above ground to try and get close to correct landing
+    #more of a place then a drop to try and be more accurate
+
+    hover_pos = PLACE_POSITION.copy()
+    hover_pos[2] += 0.05
+
+    move_to_target(world, franka, controller, art_controller,
+                   target_pos=hover_pos,
+                   attached_object=cube,
+                   threshold=0.03
+                   )
+
+
+    #got to disable our kinematic override
+    cube.prim.GetAttribute("physics:kinematicEnabled").Set(False)
+
+    cube.prim.GetAttribute("physics:collisionEnabled").Set(True)
+
     open_gripper(franka)
-    for _ in range(30):
+    for _ in range(60):
         world.step(render=False)
 
 
@@ -153,8 +128,6 @@ def run_pick_and_place(world, franka, cube):
     print(f"[task] OVERALL: {'SUCCESS' if result['overall_success'] else 'FAILURE'}")
 
     return result
-
-
 
 
 
