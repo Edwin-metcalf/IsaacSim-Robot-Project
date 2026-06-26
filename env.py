@@ -24,6 +24,7 @@ def setup_scene(cube_position=None):
             DynamicCuboid(
                 prim_path="/World/PickCube",
                 name="pick_cube",
+                position=cube_position,
                 scale=np.array([0.05, 0.05, 0.05])
                 )
             )
