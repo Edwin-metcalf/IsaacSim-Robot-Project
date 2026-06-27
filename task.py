@@ -4,10 +4,12 @@ from controller import make_controller, move_to_target, open_gripper, close_grip
 #fixed distances in meters1
 GRASP_HEIGHT_OFFSET = 0.15
 LIFT_HEIGHT = 0.3
-PLACE_POSITION = np.array([0.3, -0.3, 0.05])
+PLACE_POSITION_FIXED = np.array([0.3, -0.3, 0.05])
 
-def run_pick_and_place(world, franka, cube):
+def run_pick_and_place(world, franka, cube, place_position=None):
     #tell the franka to pick and place and return dict for eval
+    if place_position is None:
+        place_position = PLACE_POSITION_FIXED
 
     controller, art_controller = make_controller(franka)
 
@@ -80,7 +82,7 @@ def run_pick_and_place(world, franka, cube):
     print("[task] phase 5: move with the cube")
     success, dist, steps = move_to_target(
             world, franka, controller, art_controller, 
-            target_pos=PLACE_POSITION + np.array([0, 0, LIFT_HEIGHT]),
+            target_pos=place_position + np.array([0, 0, LIFT_HEIGHT]),
             attached_object=cube, threshold=0.05
             )
     result["phases"]["transport"] = {"success": success, "final_dist_m": round(dist, 4), "steps": steps}
@@ -92,7 +94,7 @@ def run_pick_and_place(world, franka, cube):
     #move to right above ground to try and get close to correct landing
     #more of a place then a drop to try and be more accurate
 
-    hover_pos = PLACE_POSITION.copy()
+    hover_pos = place_position.copy()
     hover_pos[2] += 0.05
 
     move_to_target(world, franka, controller, art_controller,
@@ -138,7 +140,7 @@ def run_pick_and_place(world, franka, cube):
 
     #check if the cube is by the place target
     cube_final_pos, _ = cube.get_world_pose()
-    xy_error = np.linalg.norm(cube_final_pos[:2] - PLACE_POSITION[:2])
+    xy_error = np.linalg.norm(cube_final_pos[:2] - place_position[:2])
     place_success= xy_error < 0.1
 
     result["phases"]["place"] = {

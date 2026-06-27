@@ -25,26 +25,31 @@ print(f"# of trials: {NUM_TRIALS}")
 print("=" * 60)
 
 # build the scene once and then reuse
+cube_positions = randomize_cube_positions(rng=rng)
+world, franka, cubes = setup_scene(cube_positions=cube_positions)
+world.reset()
+world.step(render=False)
+
 
 for trial_idx in range(NUM_TRIALS):
     print()
     print(f"Trial {trial_idx + 1} / {NUM_TRIALS}")
 
-    cube_positions = randomize_cube_positions(rng=rng)
-    print("Cube positions this trial:")
-    for color, pos in cube_positions.items():
-        print(f" {color:6}: {np.round(pos, 3)}")
+    #randomize positions on all but first(scene creation randomizes them)
+    if trial_idx > 0:
+        new_positions = randomize_cube_positions(rng=rng)
+        for color, pos in new_positions.items():
+            cubes[color].set_world_pose(position=pos)
 
-    #scene set up
-    world, franka, cubes = setup_scene(cube_positions=cube_positions)
-    world.step(render=False)
+    for _ in range(10):
+        world.step(render=False)
 
     settled_positions = {}
     for color, cube in cubes.items():
         pos, _ = cube.get_world_pose()
         settled_positions[color] = pos.copy()
 
-    print("settled positions after a physics step")
+    print("settled positions of cubes")
     for color, pos in settled_positions.items():
         print(f"{color:6}: {np.round(pos, 3)}")
 
@@ -67,13 +72,7 @@ for trial_idx in range(NUM_TRIALS):
             "overall_success": False
             })
 
-    try:
-        world.clear()
-    except Exception:
-        pass
-    continue
-
-
+        continue
 
 
     # Check the vlm response
@@ -89,10 +88,6 @@ for trial_idx in range(NUM_TRIALS):
             "overall_success": False
             })
 
-        try:
-            world.clear()
-        except Exception:
-            pass
         continue
 
 
@@ -150,11 +145,6 @@ for trial_idx in range(NUM_TRIALS):
     print(f"[eval] XY error: {xy_error:.4f}m   Z stack: {z_stack:.4f}m")
     print(f"[eval] Stacked: {'YES ✓' if stacked else 'NO ✗'}")
 
-    try:
-        world.clear()
-    except Exception:
-        pass
-
 
     #Summary of trials
 
@@ -188,7 +178,7 @@ for trial_idx in range(NUM_TRIALS):
 # save results to json
 
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-output_file = f"vlm_results_{timestamp}.json"
+output_file = f"output/vlm_results_{timestamp}.json"
 with open(output_file, "w") as f:
     json.dump(all_results, f, indent=2)
 
