@@ -39,8 +39,8 @@ def move_to_target(world, articulation, rmpflow, articulation_rmpflow,
 
         articulation.apply_action(action)
 
-        if i == 0:
-            print(action)
+        #if i == 0:
+            #print(action)
 
         ee_pos, _ = articulation.end_effector.get_world_pose()
         dist = np.linalg.norm(ee_pos - target_pos)

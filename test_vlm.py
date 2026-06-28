@@ -38,8 +38,7 @@ print(f"# of trials: {NUM_TRIALS}")
 print("=" * 60)
 
 # build the scene once and then reuse
-cube_positions = randomize_cube_positions(rng=rng)
-world, franka, cubes = setup_scene(cube_positions=cube_positions)
+world, franka, cubes = setup_scene()
 world.reset()
 world.step(render=False)
 
@@ -48,13 +47,29 @@ for trial_idx in range(NUM_TRIALS):
     print()
     print(f"Trial {trial_idx + 1} / {NUM_TRIALS}")
 
-    #randomize positions on all but first(scene creation randomizes them)
-    if trial_idx > 0:
-        new_positions = randomize_cube_positions(rng=rng)
-        for color, pos in new_positions.items():
-            cubes[color].set_world_pose(position=pos)
+    #reset everthing after each trial
+    world.reset()
 
-    for _ in range(30):
+    franka.set_joints_default_state(
+            positions=franka.get_joints_default_state().positions
+            )
+    franka.post_reset()
+    franka.gripper.open()
+
+    #randomize positions so each trial is independent
+    new_positions = randomize_cube_positions(rng=rng)
+    for color, pos in new_positions.items():
+        cube = cubes[color]
+        # please dont immediatly teleport
+        cube.prim.GetAttribute("physics:collisionEnabled").Set(True)
+        cube.prim.GetAttribute("physics:kinematicEnabled").Set(False)
+        cube.set_world_pose(position=pos)
+        cube.set_linear_velocity(np.array([0.0, 0.0, 0.0]))
+        cube.set_angular_velocity(np.array([0.0, 0.0, 0.0]))
+
+
+
+    for _ in range(60):
         world.step(render=False)
 
     settled_positions = {}
