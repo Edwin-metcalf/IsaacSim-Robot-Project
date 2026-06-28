@@ -23,16 +23,19 @@ Clone the repo and export your API key:
 git clone https://github.com/Edwin-metcalf/IsaacSim-Robot-Project.git
 cd IsaacSim-Robot-Project
 export ANTHROPIC_API_KEY="your-api-key-here"
-'''
+```
 ### Running it
-#### **python3 eval.py --prompt "your prompt" --trials 100 --seed 42 --ouput-dir output
+
+```bash
+python3 eval.py --prompt "your prompt" --trials 100 --seed 42 --ouput-dir output
+```
 #### ArgumentParser args
 * --prompt    (prompt for the model)
 * --trials    (number of trials)
 * --seed      (rng seed)
 * --ouput-dir (directory for output files)
 
-#### prompt ideas I thougt were fun
+#### prompt ideas I thought were fun
 * pick up the yellow cube and place it on top of the red cube (base prompt)
 * place the yellow cube on teh cube that is furthest to the right 
 * ignore green cube and yellow cube put the red cube where the yellow one is
