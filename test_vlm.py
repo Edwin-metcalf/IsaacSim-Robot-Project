@@ -5,6 +5,19 @@ import numpy as np
 import json
 from datetime import datetime
 
+class NumpyEncoder(json.JSONEncoder):
+    #turn numpy floats into python ones
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        if isinstance(obj, np.bool_):
+            return bool(obj)
+        return super().default(obj)
+
 from env import setup_scene, randomize_cube_positions
 from task import run_pick_and_place
 from vlm_planner import query_vlm
@@ -41,7 +54,7 @@ for trial_idx in range(NUM_TRIALS):
         for color, pos in new_positions.items():
             cubes[color].set_world_pose(position=pos)
 
-    for _ in range(10):
+    for _ in range(30):
         world.step(render=False)
 
     settled_positions = {}
@@ -180,7 +193,7 @@ for trial_idx in range(NUM_TRIALS):
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 output_file = f"output/vlm_results_{timestamp}.json"
 with open(output_file, "w") as f:
-    json.dump(all_results, f, indent=2)
+    json.dump(all_results, f, indent=2, cls=NumpyEncoder)
 
 print()
 print(f"Results saved to: {output_file}")

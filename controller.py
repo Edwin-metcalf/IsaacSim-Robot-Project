@@ -15,11 +15,11 @@ def make_controller(franka):
 def move_to_target(world, articulation, rmpflow, articulation_rmpflow,
                    target_pos, max_steps=1500, threshold=0.05, 
                    attached_object=None):
-
+    rmpflow.reset()
     target_orientation = euler_angles_to_quats([0, np.pi, 0])
 
-    print(f"FRANKA END EFFECTOR NAME and PATH: {articulation.end_effector.name}")
-    print(articulation.end_effector.prim_path)
+    #print(f"FRANKA END EFFECTOR NAME and PATH: {articulation.end_effector.name}")
+    #print(articulation.end_effector.prim_path)
 
     for i in range(max_steps):
         world.step(render=False)
@@ -44,7 +44,7 @@ def move_to_target(world, articulation, rmpflow, articulation_rmpflow,
 
         ee_pos, _ = articulation.end_effector.get_world_pose()
         dist = np.linalg.norm(ee_pos - target_pos)
-
+        """
         if i == 300:
             print("\n=== Settled State ===")
             print("EE Position:", np.round(ee_pos, 3))
@@ -55,8 +55,7 @@ def move_to_target(world, articulation, rmpflow, articulation_rmpflow,
 
             if action.joint_positions is not None:
                 print("Commanded joints:", np.round(action.joint_positions, 3))
-
-
+        """
         if dist < threshold:
             return True, dist, i
 

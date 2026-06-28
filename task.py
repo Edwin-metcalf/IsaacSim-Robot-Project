@@ -95,7 +95,7 @@ def run_pick_and_place(world, franka, cube, place_position=None):
     #more of a place then a drop to try and be more accurate
 
     hover_pos = place_position.copy()
-    hover_pos[2] += 0.05
+    hover_pos[2] += 0.01
 
     move_to_target(world, franka, controller, art_controller,
                    target_pos=hover_pos,
@@ -104,7 +104,7 @@ def run_pick_and_place(world, franka, cube, place_position=None):
                    )
 
     # park the cube and stop moving so no left over velo
-    for _ in range(10):
+    for _ in range(30):
         world.step(render=False)
         ee_pos, ee_ori = franka.end_effector.get_world_pose()
         cube.set_world_pose(position=ee_pos, orientation=ee_ori)
@@ -131,7 +131,7 @@ def run_pick_and_place(world, franka, cube, place_position=None):
 
     cube.set_linear_velocity(np.array([0.0, 0.0, 0.0]))
     cube.set_angular_velocity(np.array([0.0, 0.0, 0.0]))
-    
+    world.step(render=False) 
 
     open_gripper(franka)
     for _ in range(60):
