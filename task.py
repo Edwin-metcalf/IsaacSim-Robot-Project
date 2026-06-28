@@ -26,7 +26,7 @@ def run_pick_and_place(world, franka, cube, place_position=None):
     pre_grasp_pos[2] += GRASP_HEIGHT_OFFSET
 
     success, dist, steps = move_to_target(
-            world, franka, controller, art_controller, target_pos=pre_grasp_pos
+            world, franka, controller, art_controller, target_pos=pre_grasp_pos, threshold=0.06
             )
     result["phases"]["pre_grasp"] = {"success": success, "final_dist_m": round(dist, 4), "steps": steps}
     print(f"[task]   -> {'OK' if success else 'FAILED'} in {steps} steps, dist={dist:.4f}m")
@@ -37,7 +37,7 @@ def run_pick_and_place(world, franka, cube, place_position=None):
     grasp_pos[2] += 0.02 #get it to the right spot to close around cube
 
     success, dist, steps = move_to_target(
-            world, franka, controller, art_controller, target_pos=grasp_pos
+            world, franka, controller, art_controller, target_pos=grasp_pos, threshold=0.06
             )
     result["phases"]["grasp_approach"] = {"success": success, "final_dist_m": round(dist, 4), "steps": steps}
     print(f"[task]   -> {'OK' if success else 'FAILED'} in {steps} steps, dist={dist:.4f}m")
@@ -103,12 +103,15 @@ def run_pick_and_place(world, franka, cube, place_position=None):
                    threshold=0.02
                    )
 
+    open_gripper(franka)
+
     # park the cube and stop moving so no left over velo
     for _ in range(20):
         world.step(render=False)
         ee_pos, ee_ori = franka.end_effector.get_world_pose()
         cube.set_world_pose(position=ee_pos, orientation=ee_ori)
 
+    """
     final_ee_pos, final_ee_ori = franka.end_effector.get_world_pose()
     release_pos = np.array([
         place_position[0],
@@ -117,26 +120,22 @@ def run_pick_and_place(world, franka, cube, place_position=None):
         ])
 
     cube.set_world_pose(position=release_pos, orientation=final_ee_ori)
-
+    """
     #got to disable our kinematic override
     cube.prim.GetAttribute("physics:collisionEnabled").Set(True)
     cube.prim.GetAttribute("physics:kinematicEnabled").Set(False)
     cube.set_linear_velocity(np.array([0.0, 0.0, 0.0]))
     cube.set_angular_velocity(np.array([0.0, 0.0, 0.0]))
 
-    cube_pos_before_release, _ = cube.get_world_pose()
-    print(f"[DEBUG] Cube position just before physics re-enable: {np.round(cube_pos_before_release, 3)}")
-    print(f"[DEBUG] EE position at release: {np.round(final_ee_pos, 3)}")
-    
-
-    for _ in range(3):
+    for _ in range(60):
         world.step(render=False)
 
+
     cube_pos_after_reenable, _ = cube.get_world_pose()
-    print(f"[DEBUG] Cube position 3 steps after physics re-enable: {np.round(cube_pos_after_reenable, 3)}")
+    print(f"[DEBUG] Cube position after physics re-enable: {np.round(cube_pos_after_reenable, 3)}")
 
 
-    open_gripper(franka)
+    #open_gripper(franka)
     for _ in range(60):
         world.step(render=False)
 

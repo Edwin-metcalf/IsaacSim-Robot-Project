@@ -23,7 +23,7 @@ def move_to_target(world, articulation, rmpflow, articulation_rmpflow,
 
     for i in range(max_steps):
         world.step(render=False)
-        setp_size = 1.0/60.0
+        step_size = 1.0/60.0
         
         #simulating a grab attach the item and turn its physics off essentially
         if attached_object is not None:
