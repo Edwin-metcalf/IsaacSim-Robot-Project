@@ -41,3 +41,12 @@ python3 eval.py --prompt "your prompt" --trials 100 --seed 42 --ouput-dir output
 * ignore green cube and yellow cube put the red cube where the yellow one is
 * stack the cubes to look like a traffic light 
 * build a house with the cubes
+
+---
+### Architecture and files 
+* Environment setup -> State extraction -> VLM Planner -> Task execution -> Evaluation
+* envy.py -> spawns the franka arm and creates the world and randomizes target cubes reads the state of the scene
+* vlm_planner.py -> injects the scene state and prompt into the model which ouptus a strict json with object and destinations
+* task.py -> uses controller to set up 6 phase pick and place robot action
+* controller.py -> sets up control of the franka arm and movement
+* test files -> evaluating and testing each file, test_vlm.py is the most encompassing evalulator with log output to JSON file
