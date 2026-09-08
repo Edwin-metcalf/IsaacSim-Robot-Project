@@ -6,7 +6,7 @@ GRASP_HEIGHT_OFFSET = 0.15
 LIFT_HEIGHT = 0.3
 PLACE_POSITION_FIXED = np.array([0.3, -0.3, 0.05])
 
-def run_pick_and_place(world, franka, cube, place_position=None):
+def run_pick_and_place(world, franka, cube, place_position=None, verbose=False):
     #tell the franka to pick and place and return dict for eval
     if place_position is None:
         place_position = PLACE_POSITION_FIXED
@@ -14,14 +14,15 @@ def run_pick_and_place(world, franka, cube, place_position=None):
     controller, art_controller = make_controller(franka)
 
     cube_pos, _ = cube.get_world_pose()
-    print(f"[task] Cube at: {np.round(cube_pos, 3)}")
+    if verbose:
+        print(f"[task] Cube at: {np.round(cube_pos, 3)}")
 
     result = { 
               "cube_start": cube_pos.copy(),
               "phases": {}
               }
-
-    print("[task] phase1: move towards cube")
+    if verbose:
+        print("[task] phase1: move towards cube")
     pre_grasp_pos = cube_pos.copy()
     pre_grasp_pos[2] += GRASP_HEIGHT_OFFSET
 
@@ -29,10 +30,11 @@ def run_pick_and_place(world, franka, cube, place_position=None):
             world, franka, controller, art_controller, target_pos=pre_grasp_pos, threshold=0.06
             )
     result["phases"]["pre_grasp"] = {"success": success, "final_dist_m": round(dist, 4), "steps": steps}
-    print(f"[task]   -> {'OK' if success else 'FAILED'} in {steps} steps, dist={dist:.4f}m")
 
-    
-    print("[task] Phase 2: lowering to grasp")
+    if verbose:
+        print(f"[task]   -> {'OK' if success else 'FAILED'} in {steps} steps, dist={dist:.4f}m")
+        print("[task] Phase 2: lowering to grasp")
+
     grasp_pos = cube_pos.copy()
     grasp_pos[2] += 0.02 #get it to the right spot to close around cube
 
@@ -40,9 +42,9 @@ def run_pick_and_place(world, franka, cube, place_position=None):
             world, franka, controller, art_controller, target_pos=grasp_pos, threshold=0.06
             )
     result["phases"]["grasp_approach"] = {"success": success, "final_dist_m": round(dist, 4), "steps": steps}
-    print(f"[task]   -> {'OK' if success else 'FAILED'} in {steps} steps, dist={dist:.4f}m")
-
-    print("[task] Phase 3: close gripper")
+    if verbose:
+        print(f"[task]   -> {'OK' if success else 'FAILED'} in {steps} steps, dist={dist:.4f}m")
+        print("[task] Phase 3: close gripper")
     close_gripper(franka)
 
     #use Kinematic overide to grab the cube
@@ -58,8 +60,9 @@ def run_pick_and_place(world, franka, cube, place_position=None):
 
     result["phases"]["grasp"] = {"success": True}
 
-
-    print("[task] phase 4: lift the cube up")
+    if verbose:
+        print("[task] phase 4: lift the cube up")
+        
     lift_pos = cube_pos.copy()
     lift_pos[2] = LIFT_HEIGHT
 
@@ -77,7 +80,8 @@ def run_pick_and_place(world, franka, cube, place_position=None):
         "cube_z": round(float(cube_pos_after_lift[2]), 4),
         "steps": steps
     }
-    print(f"[task]   -> EE {'OK' if success else 'FAILED'}, cube z={cube_pos_after_lift[2]:.3f}m ({'LIFTED' if cube_lifted else 'DROPPED'})")
+    if verbose:
+        print(f"[task]   -> EE {'OK' if success else 'FAILED'}, cube z={cube_pos_after_lift[2]:.3f}m ({'LIFTED' if cube_lifted else 'DROPPED'})")
 
     print("[task] phase 5: move with the cube")
     success, dist, steps = move_to_target(
@@ -86,7 +90,9 @@ def run_pick_and_place(world, franka, cube, place_position=None):
             attached_object=cube, threshold=0.05
             )
     result["phases"]["transport"] = {"success": success, "final_dist_m": round(dist, 4), "steps": steps}
-    print(f"[task]   -> {'OK' if success else 'FAILED'} in {steps} steps")
+
+    if verbose:
+        print(f"[task]   -> {'OK' if success else 'FAILED'} in {steps} steps")
 
     
     print("[task] phase 6: drop the cube")
@@ -132,7 +138,8 @@ def run_pick_and_place(world, franka, cube, place_position=None):
 
 
     cube_pos_after_reenable, _ = cube.get_world_pose()
-    print(f"[DEBUG] Cube position after physics re-enable: {np.round(cube_pos_after_reenable, 3)}")
+    if verbose:
+        print(f"[DEBUG] Cube position after physics re-enable: {np.round(cube_pos_after_reenable, 3)}")
 
 
     #open_gripper(franka)
@@ -151,9 +158,9 @@ def run_pick_and_place(world, franka, cube, place_position=None):
         "xy_error_m": round(float(xy_error), 4)
     }
     result["overall_success"] = bool(place_success and cube_lifted)
-
-    print(f"[task] Phase 6: cube landed at {np.round(cube_final_pos, 3)}, XY error={xy_error:.3f}m")
-    print(f"[task] OVERALL: {'SUCCESS' if result['overall_success'] else 'FAILURE'}")
+    if verbose:
+        print(f"[task] Phase 6: cube landed at {np.round(cube_final_pos, 3)}, XY error={xy_error:.3f}m")
+        print(f"[task] OVERALL: {'SUCCESS' if result['overall_success'] else 'FAILURE'}")
 
     return result
 

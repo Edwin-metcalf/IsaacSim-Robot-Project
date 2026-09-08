@@ -19,7 +19,8 @@ class NumpyEncoder(json.JSONEncoder):
 from env import setup_scene, randomize_cube_positions
 from task import run_pick_and_place
 from vlm_planner import query_vlm
-def run_evaluation(TASK_PROMPT, NUM_TRIALS, seed, output_dir):
+from tqdm import tqdm
+def run_evaluation(TASK_PROMPT, NUM_TRIALS, seed, output_dir, verbose=False):
     CUBE_HEIGHT = 0.05
 
     rng = np.random.default_rng(seed)
@@ -37,10 +38,8 @@ def run_evaluation(TASK_PROMPT, NUM_TRIALS, seed, output_dir):
     world.step(render=False)
 
 
-    for trial_idx in range(NUM_TRIALS):
-        print()
-        print(f"Trial {trial_idx + 1} / {NUM_TRIALS}")
-
+    for trial_idx in tqdm(range(NUM_TRIALS), desc="Running Trials", unit="trial"):
+    
         #reset everthing after each trial
         world.reset()
 
@@ -81,8 +80,9 @@ def run_evaluation(TASK_PROMPT, NUM_TRIALS, seed, output_dir):
         print("[vlm] querying planner")
         try:
             plan = query_vlm(TASK_PROMPT, settled_positions)
-            print(f"[vlm] pick={plan['pick_color']}  place_on={plan['place_color']}")
-            print(f"[vlm] reasoning: {plan['reasoning']}")
+            if verbose:
+                print(f"[vlm] pick={plan['pick_color']}  place_on={plan['place_color']}")
+                print(f"[vlm] reasoning: {plan['reasoning']}")
             vlm_ok = True
         except Exception as e:
             print(f"[vlm] ERROR: {e}")
@@ -120,9 +120,9 @@ def run_evaluation(TASK_PROMPT, NUM_TRIALS, seed, output_dir):
         #want to try and stack need to incrase height then 
         place_target = place_pos.copy()
         place_target[2] += CUBE_HEIGHT
-
-        print(f"\n[orchestrator] Pick target:  {np.round(pick_pos, 3)}")
-        print(f"[orchestrator] Place target: {np.round(place_target, 3)}  (stacked on {place_color})")
+        if verbose:
+            print(f"\n[orchestrator] Pick target:  {np.round(pick_pos, 3)}")
+            print(f"[orchestrator] Place target: {np.round(place_target, 3)}  (stacked on {place_color})")
 
         #run the robot action
         pick_cube = cubes[pick_color]
@@ -132,7 +132,8 @@ def run_evaluation(TASK_PROMPT, NUM_TRIALS, seed, output_dir):
                 world=world,
                 franka=franka,
                 cube=pick_cube,
-                place_position=place_target
+                place_position=place_target,
+                verbose=verbose
                 )
 
         #evaluate how close the placed cube is to target and check if they arestacked
