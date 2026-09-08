@@ -8,7 +8,7 @@ This project simulates a Franka Emika Panda arm adn promts an AI to reason about
 ## Features
 * **Zero Shot Model Planning** Uses and Anthropic model to parse natural language insructions and map them to physical coordinates
 * **Closed Loop Physics** Built with Isaac Sim library (all headless), complete with collision detection, grasp physics, and realistic object dropping
-* **Automated Evaluation** Runs multi-trial tests, trackign X/Y placement error, Z stacking success, and automated logging to JSON
+* **Automated Evaluation** Runs multi-trial tests, trackign X/Y placement error, Z stacking success, and automated logging to JSON, with verbose and non verbose outputs
 
 ---
 ## Setting it up 
@@ -27,13 +27,14 @@ export ANTHROPIC_API_KEY="your-api-key-here"
 ### Running it
 
 ```bash
-python3 eval.py --prompt "your prompt" --trials 100 --seed 42 --ouput-dir output
+python3 eval.py --prompt "your prompt" --trials 100 --seed 42 --ouput-dir output --verbose True 
 ```
 #### ArgumentParser args
 * --prompt    (prompt for the model)
 * --trials    (number of trials)
 * --seed      (rng seed)
 * --ouput-dir (directory for output files)
+* --verbose   (more verbose output)
 
 #### prompt ideas I thought were fun
 * pick up the yellow cube and place it on top of the red cube (base prompt)
