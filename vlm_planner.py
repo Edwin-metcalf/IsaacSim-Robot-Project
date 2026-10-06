@@ -4,6 +4,7 @@ import requests
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 API_URL = "https://api.anthropic.com/v1/messages"
+MODEL = os.environ.get("PLANNER_MODEL", "claude-haiku-4-5-20251001")
 
 def build_scene_description(cubes: dict) -> str:
     """ this scene takes in 3 different color cubes """
@@ -42,7 +43,8 @@ def query_vlm(task_instruction: str, cubes: dict) -> dict:
             }
 
     body = {
-            "model": "claude-haiku-4-5-20251001",
+            "model": MODEL,
+            "temperature": 0,
             "max_tokens": 256,
             "messages": [{"role": "user", "content": prompt}]
             }
