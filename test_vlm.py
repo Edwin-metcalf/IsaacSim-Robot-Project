@@ -2,6 +2,8 @@ import os
 import numpy as np
 import json
 from datetime import datetime
+from math import sqrt
+from collections import Counter
 
 class NumpyEncoder(json.JSONEncoder):
     #turn numpy floats into python ones
@@ -16,9 +18,17 @@ class NumpyEncoder(json.JSONEncoder):
             return bool(obj)
         return super().default(obj)
 
+def wilson(k, n, z=1.96):
+    p = k / n
+    d = 1 + z*z/n
+    c = (p + z*z/(2*n)) / d
+    h = z * sqrt(p*(1-p)/n + z*z/(4*n*n)) / d
+    return c - h, c + h
+
+
 from env import setup_scene, randomize_cube_positions
 from task import run_pick_and_place
-from vlm_planner import query_vlm
+from vlm_planner import query_vlm, MODEL
 from tqdm import tqdm
 def run_evaluation(TASK_PROMPT, NUM_TRIALS, seed, output_dir, verbose=False):
     CUBE_HEIGHT = 0.05
@@ -91,6 +101,7 @@ def run_evaluation(TASK_PROMPT, NUM_TRIALS, seed, output_dir, verbose=False):
                 "trial": trial_idx + 1,
                 "vlm_ok": False,
                 "error": str(e),
+                "failure_mode": "vlm_error",
                 "overall_success": False
                 })
 
@@ -101,12 +112,13 @@ def run_evaluation(TASK_PROMPT, NUM_TRIALS, seed, output_dir, verbose=False):
         pick_color = plan["pick_color"]
         place_color = plan["place_color"]
 
-        if pick_color not in cubes or place_color not in cubes:
+        if pick_color not in cubes or place_color not in cubes or pick_color == place_color:
             print(f"VLM retuned unknown colors: {pick_color}, {place_color}")
             all_results.append({
                 "trial": trial_idx + 1,
                 "vlm_ok": False, 
                 "error": f"unknown colors: {pick_color}, {place_color}",
+                "failure_mode": "bad_plan",
                 "overall_success": False
                 })
 
@@ -144,6 +156,8 @@ def run_evaluation(TASK_PROMPT, NUM_TRIALS, seed, output_dir, verbose=False):
 
         z_stack = picked_final[2] - place_cube_pos[2]
         stacked = xy_error < 0.08 and 0.02 < z_stack < 0.10
+        failed_phase = next((p for p, d in result.get("phases", {}).items() if not d.get("success", True)), None)
+        failure_mode = None if stacked else (f"motion:{failed_phase}" if failed_phase else "placement_miss")
 
         trial_result = {
             "trial":           trial_idx + 1,
@@ -158,7 +172,8 @@ def run_evaluation(TASK_PROMPT, NUM_TRIALS, seed, output_dir, verbose=False):
             "z_stack_m":       round(float(z_stack), 4),
             "stacked":         bool(stacked),
             "phases":          result.get("phases", {}),
-            "overall_success": bool(stacked)
+            "overall_success": bool(stacked),
+            "failure_mode":    failure_mode,
         }
         
         all_results.append(trial_result)
@@ -170,42 +185,41 @@ def run_evaluation(TASK_PROMPT, NUM_TRIALS, seed, output_dir, verbose=False):
 
 
         #Summary of trials
-
-        print()
-        print("=" * 60)
-        print("SUMMARY")
-        print()
-
-        successes = [r for r in all_results if r["overall_success"]]
+        n = len(all_results)
+        k = sum(r["overall_success"] for r in all_results)
+        lo, hi = wilson(k, n)
         vlm_errors = [r for r in all_results if not r["vlm_ok"]]
+        successes = [r for r in all_results if r["overall_success"]]
 
-        print(f"Trials run:      {NUM_TRIALS}")
-        print(f"VLM errors:     {len(vlm_errors)}")
-        print(f"stacked ok:     {len(successes)} / {NUM_TRIALS}")
+        print()
+        print("SUMMARY")
+        print("=" * 60)
+        print(f"Stacked: {k} / {n} = {k/n:.0%} (95% Wilson CI {lo:.0%} to {hi:.0%})")
+        print("Failure modes: ", dict(Counter(r["failure_mode"] for r in all_results if not r["overall_success"])))
 
         if successes:
             xy_errors = [r["xy_error_m"] for r in successes]
             z_stacks = [r["z_stack_m"] for r in successes]
-            
-            print(f"mean xy error: {np.mean(xy_errors):.4f}m (std {np.std(xy_errors):.4f}m)")
-            print(f"Mean z stack:   {np.mean(z_stacks):.4f}m (std {np.std(z_stacks):.4f}m)")
+            print(f"Mean xy error: {np.mean(xy_errors):.4f}m (std {np.std(xy_errors):.4f}m)")
+            print(f"Mean z stack:  {np.mean(z_stacks):.4f}m (std {np.std(z_stacks):.4f}m)")
 
-            print(f"\nPer Trial breakdown: ")
-            for r in all_results:
-                if not r["vlm_ok"]:
-                    print(f"  Trial {r['trial']}: VLM ERROR - {r.get('error', '?')}")
-                else:
-                    status = "✓ STACKED" if r["overall_success"] else "✗ FAILED "
-                    print(f"  Trial {r['trial']}: {status}  xy={r['xy_error_m']:.4f}m  z={r['z_stack_m']:.4f}m  plan={r['plan']}")
+        print("\nPer trial breakdown:")
 
-    # save results to json
+        for r in all_results:
+            if not r["vlm_ok"]:
+                print(f"  Trial {r['trial']}: VLM ERROR - {r.get('error', '?')}")
+            else:
+                status = "✓ STACKED" if r["overall_success"] else "✗ FAILED "
+                print(f"  Trial {r['trial']}: {status} {r.get('failure_mode') or ''}  xy={r['xy_error_m']:.4f}m  z={r['z_stack_m']:.4f}m  plan={r['plan']}")
+
+    #save results to json
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_file = f"{output_dir}/vlm_results_{timestamp}.json"
     os.makedirs(output_dir, exist_ok=True)
     with open(output_file, "w") as f:
-        json.dump(all_results, f, indent=2, cls=NumpyEncoder)
+        json.dump({"meta": {"prompt": TASK_PROMPT, "seed": seed, "n": NUM_TRIALS, "model": MODEL},
+                   "trials": all_results}, f, indent=2, cls=NumpyEncoder)
 
     print()
     print(f"Results saved to: {output_file}")
-

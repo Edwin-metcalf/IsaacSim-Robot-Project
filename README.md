@@ -27,13 +27,13 @@ export ANTHROPIC_API_KEY="your-api-key-here"
 ### Running it
 
 ```bash
-python3 eval.py --prompt "your prompt" --trials 100 --seed 42 --ouput-dir output --verbose True 
+python3 eval.py --prompt "your prompt" --trials 100 --seed 42 --output-dir output --verbose True 
 ```
 #### ArgumentParser args
 * --prompt    (prompt for the model)
 * --trials    (number of trials)
 * --seed      (rng seed)
-* --ouput-dir (directory for output files)
+* --output-dir (directory for output files)
 * --verbose   (more verbose output)
 
 #### prompt ideas I thought were fun
