@@ -11,5 +11,6 @@ lerobot-eval \
   --policy.path="$policy" --env.type=pusht \
   --eval.n_episodes="$n" --eval.batch_size=10 \
   --seed="$seed" --output_dir="$out" --policy.device=cuda \
+  --eval.use_async_envs=false \
   2>&1 | tee "$out/log.txt"
 echo "policy=$policy n=$n seed=$seed date=$(date -Is)" >"$out/meta.txt"
